@@ -7,8 +7,8 @@ from sklearn.preprocessing import LabelEncoder
 # Load datasets
 @st.cache_data
 def load_data():
-    fert_df = pd.read_csv("F:\\ML pros\\Fertilizer Prediction.csv")
-    crop_df = pd.read_csv("F:\\ML pros\\Crop_recommendation.csv")
+    fert_df = pd.read_csv(""data/Fertilizer Prediction.csv")
+    crop_df = pd.read_csv(""data/Crop_recommendation.csv")
     return fert_df, crop_df
 
 fertilizer_df, crop_recommendation_df = load_data()
