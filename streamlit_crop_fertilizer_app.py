@@ -12,27 +12,42 @@ def load_data():
 
 fertilizer_df, crop_recommendation_df = load_data()
 
-# Label encode categorical columns and save encoders for inverse transform
-fert_encoder = LabelEncoder()
-for col in fertilizer_df.select_dtypes(include=["object"]).columns:
-    fertilizer_df[col] = fert_encoder.fit_transform(fertilizer_df[col])
+# --------------------------
+# LABEL ENCODING FOR FERTILIZER DATA
+# --------------------------
 
-crop_encoder = LabelEncoder()
-for col in crop_recommendation_df.select_dtypes(include=["object"]).columns:
-    crop_recommendation_df[col] = crop_encoder.fit_transform(crop_recommendation_df[col])
+soil_type_encoder = LabelEncoder()
+fertilizer_df['Soil Type Enc'] = soil_type_encoder.fit_transform(fertilizer_df['Soil Type'])
 
-# Train models once
+crop_type_encoder = LabelEncoder()
+fertilizer_df['Crop Type Enc'] = crop_type_encoder.fit_transform(fertilizer_df['Crop Type'])
+
+fert_name_encoder = LabelEncoder()
+fertilizer_df['Fertilizer Name Enc'] = fert_name_encoder.fit_transform(fertilizer_df['Fertilizer Name'])
+
+# --------------------------
+# LABEL ENCODING FOR CROP RECOMMENDATION DATA
+# --------------------------
+
+crop_label_encoder = LabelEncoder()
+crop_recommendation_df['label Enc'] = crop_label_encoder.fit_transform(crop_recommendation_df['label'])
+
+# --------------------------
+# TRAIN MODELS
+# --------------------------
+
 @st.cache_resource
 def train_models():
-    # Crop Model
-    X_crop = crop_recommendation_df.drop('label', axis=1)
-    y_crop = crop_recommendation_df['label']
+    # Crop model
+    X_crop = crop_recommendation_df.drop(['label', 'label Enc'], axis=1)
+    y_crop = crop_recommendation_df['label Enc']
     crop_model = RandomForestClassifier()
     crop_model.fit(X_crop, y_crop)
 
-    # Fertilizer Model
-    X_fert = fertilizer_df.drop('Fertilizer Name', axis=1)
-    y_fert = fertilizer_df['Fertilizer Name']
+    # Fertilizer model
+    X_fert = fertilizer_df[['Temperature', 'Humidity', 'Moisture', 'Soil Type Enc', 'Crop Type Enc',
+                           'Nitrogen', 'Potassium', 'Phosphorous']]
+    y_fert = fertilizer_df['Fertilizer Name Enc']
     fert_model = RandomForestClassifier()
     fert_model.fit(X_fert, y_fert)
 
@@ -40,51 +55,47 @@ def train_models():
 
 crop_model, fert_model, crop_features, fert_features = train_models()
 
-# Get unique categories for dropdowns for better UX
-soil_types = fertilizer_df['Soil Type'].unique()
-crop_types = fertilizer_df['Crop Type'].unique()
+# --------------------------
+# UI
+# --------------------------
 
-# UI Title
 st.title("🌾 Crop and Fertilizer Prediction App")
 
-# User choice: Crop or Fertilizer prediction
 choice = st.selectbox("What do you want to predict?", ["Crop", "Fertilizer"])
 
 st.subheader("Enter the following parameters:")
 
-# Inputs common for both
+# Common inputs
 temp = st.number_input("🌡️ Temperature")
 humidity = st.number_input("💧 Humidity")
 moisture = st.number_input("🧪 Moisture")
 
-# Soil and crop type dropdowns (for Fertilizer prediction only)
-soil_type_str = st.selectbox("🌱 Soil Type", soil_types)
-crop_type_str = st.selectbox("🌾 Crop Type", crop_types)
+# Dropdowns for Fertilizer prediction (soil and crop types)
+soil_type_str = st.selectbox("🌱 Soil Type", fertilizer_df['Soil Type'].unique())
+crop_type_str = st.selectbox("🌾 Crop Type", fertilizer_df['Crop Type'].unique())
 
-# Nutrients and other inputs
 nitrogen = st.number_input("🧬 Nitrogen")
 potassium = st.number_input("🧪 Potassium")
 phosphorous = st.number_input("🧪 Phosphorous")
 ph = st.number_input("pH")
 rainfall = st.number_input("🌧️ Rainfall")
 
-# Encode selected soil and crop types for Fertilizer prediction input
-soil_type_encoded = fert_encoder.transform([soil_type_str])[0]
-crop_type_encoded = fert_encoder.transform([crop_type_str])[0]
+# Encode soil_type and crop_type inputs for fertilizer model
+soil_type_encoded = soil_type_encoder.transform([soil_type_str])[0]
+crop_type_encoded = crop_type_encoder.transform([crop_type_str])[0]
 
 if st.button("🔍 Predict"):
     if choice == "Crop":
-        # Prepare input dataframe matching crop model features
         input_df = pd.DataFrame([[nitrogen, phosphorous, potassium, temp, humidity, ph, rainfall]],
                                 columns=crop_features)
-        prediction = crop_model.predict(input_df)[0]
-        predicted_crop = crop_encoder.inverse_transform([prediction])[0]
-        st.success(f"🌾 Recommended Crop: **{predicted_crop}**")
+        prediction_enc = crop_model.predict(input_df)[0]
+        prediction = crop_label_encoder.inverse_transform([prediction_enc])[0]
+        st.success(f"🌾 Recommended Crop: **{prediction}**")
 
-    else:  # Fertilizer prediction
+    else:
         input_df = pd.DataFrame([[temp, humidity, moisture, soil_type_encoded, crop_type_encoded,
                                   nitrogen, potassium, phosphorous]],
                                 columns=fert_features)
-        prediction = fert_model.predict(input_df)[0]
-        predicted_fertilizer = fert_encoder.inverse_transform([prediction])[0]
-        st.success(f"🧪 Recommended Fertilizer: **{predicted_fertilizer}**")
+        prediction_enc = fert_model.predict(input_df)[0]
+        prediction = fert_name_encoder.inverse_transform([prediction_enc])[0]
+        st.success(f"🧪 Recommended Fertilizer: **{prediction}**")
