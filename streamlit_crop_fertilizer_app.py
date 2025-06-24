@@ -39,13 +39,13 @@ crop_recommendation_df['label Enc'] = crop_label_encoder.fit_transform(crop_reco
 @st.cache_resource
 def train_models():
     # Crop model
-    X_crop = crop_recommendation_df.drop(['label', 'label Enc'], axis=1)
+    X_crop = crop_recommendation_df[['N', 'P', 'K', 'temperature', 'humidity', 'ph', 'rainfall']]
     y_crop = crop_recommendation_df['label Enc']
     crop_model = RandomForestClassifier()
     crop_model.fit(X_crop, y_crop)
 
     # Fertilizer model
-    X_fert = fertilizer_df[['Temperature', 'Humidity', 'Moisture', 'Soil Type Enc', 'Crop Type Enc',
+    X_fert = fertilizer_df[['Temparature', 'Humidity', 'Moisture', 'Soil Type Enc', 'Crop Type Enc',
                            'Nitrogen', 'Potassium', 'Phosphorous']]
     y_fert = fertilizer_df['Fertilizer Name Enc']
     fert_model = RandomForestClassifier()
@@ -65,22 +65,23 @@ choice = st.selectbox("What do you want to predict?", ["Crop", "Fertilizer"])
 
 st.subheader("Enter the following parameters:")
 
-# Common inputs
-temp = st.number_input("🌡️ Temperature")
+# Inputs for Fertilizer prediction
+temp = st.number_input("🌡️ Temperature")  # This corresponds to 'Temparature' in fertilizer_df (note typo)
 humidity = st.number_input("💧 Humidity")
 moisture = st.number_input("🧪 Moisture")
 
-# Dropdowns for Fertilizer prediction (soil and crop types)
 soil_type_str = st.selectbox("🌱 Soil Type", fertilizer_df['Soil Type'].unique())
 crop_type_str = st.selectbox("🌾 Crop Type", fertilizer_df['Crop Type'].unique())
 
 nitrogen = st.number_input("🧬 Nitrogen")
 potassium = st.number_input("🧪 Potassium")
 phosphorous = st.number_input("🧪 Phosphorous")
+
+# Inputs for Crop prediction
 ph = st.number_input("pH")
 rainfall = st.number_input("🌧️ Rainfall")
 
-# Encode soil_type and crop_type inputs for fertilizer model
+# Encode soil_type and crop_type inputs for fertilizer prediction
 soil_type_encoded = soil_type_encoder.transform([soil_type_str])[0]
 crop_type_encoded = crop_type_encoder.transform([crop_type_str])[0]
 
